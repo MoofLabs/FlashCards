@@ -37,10 +37,15 @@
     .set-info { flex: 1; min-width: 0; }
     .set-info h3 { color: #1f2937; margin-bottom: 4px; word-wrap: break-word; }
     .set-info p { color: #6b7280; font-size: 0.875rem; }
-    .flashcard { background: white; border-radius: 12px; padding: 48px; min-height: 300px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; margin-bottom: 24px; }
+    .flashcard { background: white; border-radius: 12px; padding: 24px; height: 70vh; max-height: 700px; min-height: 400px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; margin-bottom: 24px; overflow: auto; }
     .flashcard:active { transform: scale(0.98); }
-    .flashcard-text { font-size: 1.5rem; color: #1f2937; word-wrap: break-word; max-width: 100%; }
+    .flashcard-content { max-width: 100%; max-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .flashcard-text { font-size: 1.5rem; color: #1f2937; word-wrap: break-word; max-width: 100%; margin-bottom: 16px; }
     .flashcard-label { font-size: 0.875rem; color: #9ca3af; margin-bottom: 16px; }
+    .flashcard img { max-width: 90%; max-height: calc(70vh - 200px); object-fit: contain; margin-top: 12px; border-radius: 8px; }
+    @media (min-width: 768px) {
+      .flashcard { padding: 48px; }
+    }
     .progress-dots { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; }
     .dot.active { background: #7c3aed; }
@@ -51,7 +56,7 @@
     .back-link { color: #7c3aed; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; font-weight: 600; }
     .back-link:hover { color: #6d28d9; }
     .hidden { display: none; }
-    .image-preview { max-width: 300px; max-height: 200px; margin: 12px 0; border-radius: 8px; }
+    .image-preview { max-width: 300px; max-height: 200px; margin: 12px 0; border-radius: 8px; background: white; }
     .shuffle-btn { background: white; border: 2px solid #7c3aed; color: #7c3aed; }
     .shuffle-btn.active { background: #7c3aed; color: white; }
   </style>
@@ -95,7 +100,7 @@
             
             <div class="card">
               <h2>Create New Set</h2>
-              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)">
+              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)" onkeydown="if(event.key==='Enter')createSet()">
               <button class="btn-primary btn-full" onclick="createSet()">Create Set</button>
             </div>
 
@@ -104,7 +109,7 @@
               <div class="btn-group">
                 <input type="file" id="fileInput" accept=".json,.csv" style="display:none" onchange="importFile(event)">
                 <button class="btn-secondary btn-full" onclick="document.getElementById('fileInput').click()">📥 Import</button>
-                <button class="btn-success btn-full" onclick="exportSelected()" ${state.sets.length === 0 ? 'disabled' : ''}>📤 Export Selected</button>
+                <button class="btn-success btn-full" onclick="exportSelected()" ${state.sets.length === 0 || state.selectedSets.size === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>📤 Export Selected (${state.selectedSets.size})</button>
               </div>
             </div>
 
@@ -142,11 +147,11 @@
             <div class="card">
               <h2>${state.editingCard ? 'Edit Card' : 'Add New Card'}</h2>
               <textarea id="frontText" placeholder="Front (question or term)" inputmode="text">${state.editingCard ? state.editingCard.front : ''}</textarea>
-              <input type="file" id="frontImage" accept="image/*" onchange="handleImage('front', event)">
+              <input type="file" id="frontImage" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif" onchange="handleImage('front', event)">
               <div id="frontImagePreview"></div>
               
               <textarea id="backText" placeholder="Back (answer or definition)" inputmode="text">${state.editingCard ? state.editingCard.back : ''}</textarea>
-              <input type="file" id="backImage" accept="image/*" onchange="handleImage('back', event)">
+              <input type="file" id="backImage" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif" onchange="handleImage('back', event)">
               <div id="backImagePreview"></div>
               
               ${state.editingCard 
@@ -156,6 +161,12 @@
                   </div>`
                 : `<button class="btn-primary btn-full" onclick="addCard()">+ Add Card</button>`
               }
+            </div>
+
+            <div style="margin-bottom:16px">
+              <button class="btn-success btn-full" onclick="studySet(${state.currentSet})" ${set.cards.length === 0 ? 'disabled' : ''}>
+                📖 Study Now
+              </button>
             </div>
 
             <div class="card">
@@ -205,10 +216,10 @@
             <p style="color:#6b7280;margin-bottom:24px">Card ${state.currentCardIndex + 1} of ${set.cards.length}</p>
 
             <div class="flashcard" onclick="flip()">
-              <div>
+              <div class="flashcard-content">
                 <div class="flashcard-label">${side.toUpperCase()} (tap to flip)</div>
                 <div class="flashcard-text" style="font-size: ${getTextSize(card[side], card[side + 'Image'])}">${card[side] || ''}</div>
-                ${card[side + 'Image'] ? `<img src="${card[side + 'Image']}" style="max-width:100%;max-height:300px;margin-top:20px;border-radius:8px">` : ''}
+                ${card[side + 'Image'] ? `<img src="${card[side + 'Image']}">` : ''}
               </div>
             </div>
 
@@ -430,12 +441,9 @@
     }
 
     function exportSelected() {
+      if (state.selectedSets.size === 0) return;
+      
       const selectedSetsArray = state.sets.filter(s => state.selectedSets.has(s.id));
-      
-      if (selectedSetsArray.length === 0) {
-        return alert('Please select at least one set to export');
-      }
-      
       const json = JSON.stringify(selectedSetsArray, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
