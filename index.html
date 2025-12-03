@@ -93,6 +93,9 @@
     function render() {
       const app = document.getElementById('app');
       
+      // Remove any existing keyboard listeners
+      document.onkeydown = null;
+      
       if (state.view === 'home') {
         app.innerHTML = `
           <div class="container">
