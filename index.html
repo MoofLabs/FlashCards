@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcard Study</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #f5f3ff 0%, #dbeafe 100%); min-height: 100vh; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { color: #6b21a8; margin-bottom: 24px; text-align: center; font-size: 2rem; }
+    h2 { color: #374151; margin-bottom: 16px; font-size: 1.25rem; }
+    input, textarea { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem; margin-bottom: 12px; }
+    textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+    button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #7c3aed; color: white; }
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-secondary { background: #3b82f6; color: white; }
+    .btn-secondary:hover { background: #2563eb; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-gray { background: #6b7280; color: white; }
+    .btn-gray:hover { background: #4b5563; }
+    .btn-group { display: flex; gap: 12px; margin-top: 12px; }
+    .btn-full { width: 100%; }
+    .set-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 12px; }
+    .set-info h3 { color: #1f2937; margin-bottom: 4px; }
+    .set-info p { color: #6b7280; font-size: 0.875rem; }
+    .flashcard { background: white; border-radius: 12px; padding: 48px; min-height: 300px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; margin-bottom: 24px; }
+    .flashcard:active { transform: scale(0.98); }
+    .flashcard-text { font-size: 1.5rem; color: #1f2937; word-wrap: break-word; max-width: 100%; }
+    .flashcard-label { font-size: 0.875rem; color: #9ca3af; margin-bottom: 16px; }
+    .progress-dots { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; }
+    .dot.active { background: #7c3aed; }
+    .card-list-item { background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: start; }
+    .card-content { flex: 1; }
+    .card-actions { display: flex; gap: 8px; }
+    .btn-small { padding: 8px 12px; font-size: 0.875rem; }
+    .back-link { color: #7c3aed; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px; font-weight: 600; }
+    .back-link:hover { color: #6d28d9; }
+    .hidden { display: none; }
+    .image-preview { max-width: 300px; max-height: 200px; margin: 12px 0; border-radius: 8px; }
+    .shuffle-btn { background: white; border: 2px solid #7c3aed; color: #7c3aed; }
+    .shuffle-btn.active { background: #7c3aed; color: white; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  
+  <script>
+    const state = {
+      view: 'home',
+      sets: JSON.parse(localStorage.getItem('flashcard-sets') || '[]'),
+      currentSet: null,
+      currentCardIndex: 0,
+      isFlipped: false,
+      editingCard: null,
+      shuffleMode: false,
+      shuffledIndices: []
+    };
+
+    function save() {
+      localStorage.setItem('flashcard-sets', JSON.stringify(state.sets));
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      
+      if (state.view === 'home') {
+        app.innerHTML = `
+          <div class="container">
+            <h1>📚 Flashcard Study</h1>
+            
+            <div class="card">
+              <h2>Create New Set</h2>
+              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)">
+              <button class="btn-primary btn-full" onclick="createSet()">Create Set</button>
+            </div>
+
+            <div class="card">
+              <h2>Import & Export</h2>
+              <div class="btn-group">
+                <input type="file" id="fileInput" accept=".json,.csv" style="display:none" onchange="importFile(event)">
+                <button class="btn-secondary btn-full" onclick="document.getElementById('fileInput').click()">📥 Import</button>
+                <button class="btn-success btn-full" onclick="exportAll()" ${state.sets.length === 0 ? 'disabled' : ''}>📤 Export All</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2>Your Sets (${state.sets.length})</h2>
+              ${state.sets.map(set => `
+                <div class="set-item">
+                  <div class="set-info">
+                    <h3>${set.name}</h3>
+                    <p>${set.cards.length} cards</p>
+                  </div>
+                  <div class="btn-group">
+                    <button class="btn-secondary btn-small" onclick="editSet(${set.id})">Edit</button>
+                    <button class="btn-success btn-small" onclick="studySet(${set.id})" ${set.cards.length === 0 ? 'disabled' : ''}>Study</button>
+                    <button class="btn-danger btn-small" onclick="deleteSet(${set.id})">Delete</button>
+                  </div>
+                </div>
+              `).join('') || '<p style="color:#9ca3af">No sets yet. Create one above!</p>'}
+            </div>
+          </div>
+        `;
+      } else if (state.view === 'edit') {
+        const set = state.sets.find(s => s.id === state.currentSet);
+        app.innerHTML = `
+          <div class="container">
+            <a href="#" class="back-link" onclick="goHome(); return false;">← Back to Sets</a>
+            <h1>${set.name}</h1>
+            <p style="color:#6b7280;margin-bottom:24px">${set.cards.length} cards</p>
+
+            <div class="card">
+              <h2>${state.editingCard ? 'Edit Card' : 'Add New Card'}</h2>
+              <textarea id="frontText" placeholder="Front (question or term)">${state.editingCard ? state.editingCard.front : ''}</textarea>
+              <input type="file" id="frontImage" accept="image/*" onchange="handleImage('front', event)">
+              <div id="frontImagePreview"></div>
+              
+              <textarea id="backText" placeholder="Back (answer or definition)">${state.editingCard ? state.editingCard.back : ''}</textarea>
+              <input type="file" id="backImage" accept="image/*" onchange="handleImage('back', event)">
+              <div id="backImagePreview"></div>
+              
+              ${state.editingCard 
+                ? `<div class="btn-group">
+                    <button class="btn-success btn-full" onclick="updateCard()">✓ Update Card</button>
+                    <button class="btn-gray" onclick="cancelEdit()">Cancel</button>
+                  </div>`
+                : `<button class="btn-primary btn-full" onclick="addCard()">+ Add Card</button>`
+              }
+            </div>
+
+            <div class="card">
+              <h2>Cards in this set</h2>
+              ${set.cards.map((card, i) => `
+                <div class="card-list-item">
+                  <div class="card-content">
+                    <strong>${i + 1}. ${card.front}</strong>
+                    ${card.frontImage ? `<br><img src="${card.frontImage}" class="image-preview">` : ''}
+                    <div style="color:#6b7280;margin-top:8px">${card.back}</div>
+                    ${card.backImage ? `<br><img src="${card.backImage}" class="image-preview">` : ''}
+                  </div>
+                  <div class="card-actions">
+                    <button class="btn-secondary btn-small" onclick="startEdit(${card.id})">Edit</button>
+                    <button class="btn-danger btn-small" onclick="deleteCard(${card.id})">Delete</button>
+                  </div>
+                </div>
+              `).join('') || '<p style="color:#9ca3af">No cards yet. Add one above!</p>'}
+            </div>
+          </div>
+        `;
+        
+        if (state.editingCard) {
+          if (state.editingCard.frontImage) {
+            document.getElementById('frontImagePreview').innerHTML = `<img src="${state.editingCard.frontImage}" class="image-preview">`;
+          }
+          if (state.editingCard.backImage) {
+            document.getElementById('backImagePreview').innerHTML = `<img src="${state.editingCard.backImage}" class="image-preview">`;
+          }
+        }
+      } else if (state.view === 'study') {
+        const set = state.sets.find(s => s.id === state.currentSet);
+        const cardIndex = state.shuffleMode ? state.shuffledIndices[state.currentCardIndex] : state.currentCardIndex;
+        const card = set.cards[cardIndex];
+        const side = state.isFlipped ? 'back' : 'front';
+        
+        app.innerHTML = `
+          <div class="container">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <a href="#" class="back-link" onclick="goHome(); return false;">← Back to Sets</a>
+              <button class="shuffle-btn btn-small ${state.shuffleMode ? 'active' : ''}" onclick="toggleShuffle()">
+                🔀 ${state.shuffleMode ? 'Shuffled' : 'Shuffle'}
+              </button>
+            </div>
+            
+            <h1>${set.name}</h1>
+            <p style="color:#6b7280;margin-bottom:24px">Card ${state.currentCardIndex + 1} of ${set.cards.length}</p>
+
+            <div class="flashcard" onclick="flip()">
+              <div>
+                <div class="flashcard-label">${side.toUpperCase()} (tap to flip)</div>
+                <div class="flashcard-text">${card[side]}</div>
+                ${card[side + 'Image'] ? `<img src="${card[side + 'Image']}" style="max-width:100%;max-height:300px;margin-top:20px;border-radius:8px">` : ''}
+              </div>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn-gray btn-full" onclick="prevCard()">← Previous</button>
+              <button class="btn-primary" onclick="flip()">🔄</button>
+              <button class="btn-success btn-full" onclick="nextCard()">Next →</button>
+            </div>
+
+            <div class="progress-dots">
+              ${set.cards.map((_, i) => `<div class="dot ${i === state.currentCardIndex ? 'active' : ''}"></div>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function createSet() {
+      const name = document.getElementById('newSetName').value.trim();
+      if (!name) return alert('Please enter a set name');
+      state.sets.push({ id: Date.now(), name, cards: [] });
+      save();
+      render();
+    }
+
+    function deleteSet(id) {
+      if (!confirm('Delete this set?')) return;
+      state.sets = state.sets.filter(s => s.id !== id);
+      save();
+      render();
+    }
+
+    function editSet(id) {
+      state.view = 'edit';
+      state.currentSet = id;
+      render();
+    }
+
+    function studySet(id) {
+      state.view = 'study';
+      state.currentSet = id;
+      state.currentCardIndex = 0;
+      state.isFlipped = false;
+      state.shuffleMode = false;
+      render();
+    }
+
+    function goHome() {
+      state.view = 'home';
+      state.editingCard = null;
+      render();
+    }
+
+    let tempFrontImage = null;
+    let tempBackImage = null;
+
+    function handleImage(side, event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+          
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = (height / width) * maxDim;
+              width = maxDim;
+            } else {
+              width = (width / height) * maxDim;
+              height = maxDim;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          
+          if (side === 'front') {
+            tempFrontImage = dataUrl;
+            document.getElementById('frontImagePreview').innerHTML = `<img src="${dataUrl}" class="image-preview">`;
+          } else {
+            tempBackImage = dataUrl;
+            document.getElementById('backImagePreview').innerHTML = `<img src="${dataUrl}" class="image-preview">`;
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function addCard() {
+      const front = document.getElementById('frontText').value.trim();
+      const back = document.getElementById('backText').value.trim();
+      if (!front || !back) return alert('Please fill in both sides');
+      
+      const set = state.sets.find(s => s.id === state.currentSet);
+      set.cards.push({
+        id: Date.now(),
+        front,
+        back,
+        frontImage: tempFrontImage,
+        backImage: tempBackImage
+      });
+      
+      tempFrontImage = null;
+      tempBackImage = null;
+      save();
+      render();
+    }
+
+    function startEdit(cardId) {
+      const set = state.sets.find(s => s.id === state.currentSet);
+      state.editingCard = set.cards.find(c => c.id === cardId);
+      tempFrontImage = state.editingCard.frontImage;
+      tempBackImage = state.editingCard.backImage;
+      render();
+    }
+
+    function updateCard() {
+      const front = document.getElementById('frontText').value.trim();
+      const back = document.getElementById('backText').value.trim();
+      if (!front || !back) return alert('Please fill in both sides');
+      
+      const set = state.sets.find(s => s.id === state.currentSet);
+      const card = set.cards.find(c => c.id === state.editingCard.id);
+      card.front = front;
+      card.back = back;
+      card.frontImage = tempFrontImage;
+      card.backImage = tempBackImage;
+      
+      state.editingCard = null;
+      tempFrontImage = null;
+      tempBackImage = null;
+      save();
+      render();
+    }
+
+    function cancelEdit() {
+      state.editingCard = null;
+      tempFrontImage = null;
+      tempBackImage = null;
+      render();
+    }
+
+    function deleteCard(cardId) {
+      if (!confirm('Delete this card?')) return;
+      const set = state.sets.find(s => s.id === state.currentSet);
+      set.cards = set.cards.filter(c => c.id !== cardId);
+      save();
+      render();
+    }
+
+    function flip() {
+      state.isFlipped = !state.isFlipped;
+      render();
+    }
+
+    function nextCard() {
+      const set = state.sets.find(s => s.id === state.currentSet);
+      state.currentCardIndex = (state.currentCardIndex + 1) % set.cards.length;
+      state.isFlipped = false;
+      render();
+    }
+
+    function prevCard() {
+      const set = state.sets.find(s => s.id === state.currentSet);
+      state.currentCardIndex = (state.currentCardIndex - 1 + set.cards.length) % set.cards.length;
+      state.isFlipped = false;
+      render();
+    }
+
+    function toggleShuffle() {
+      const set = state.sets.find(s => s.id === state.currentSet);
+      state.shuffleMode = !state.shuffleMode;
+      
+      if (state.shuffleMode) {
+        state.shuffledIndices = [...Array(set.cards.length).keys()];
+        for (let i = state.shuffledIndices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [state.shuffledIndices[i], state.shuffledIndices[j]] = [state.shuffledIndices[j], state.shuffledIndices[i]];
+        }
+      }
+      
+      state.currentCardIndex = 0;
+      state.isFlipped = false;
+      render();
+    }
+
+    function exportAll() {
+      const json = JSON.stringify(state.sets, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flashcards-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!Array.isArray(imported)) throw new Error('Invalid format');
+          
+          state.sets = [...state.sets, ...imported];
+          save();
+          render();
+          alert(`Imported ${imported.length} set(s)!`);
+        } catch (err) {
+          alert('Error importing file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    render();
+  </script>
+  
+  <script>
+    // Register service worker for offline support
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('Service Worker registered'))
+          .catch(err => console.log('Service Worker registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
