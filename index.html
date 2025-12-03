@@ -100,7 +100,7 @@
             
             <div class="card">
               <h2>Create New Set</h2>
-              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)">
+              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)" onkeydown="if(event.key==='Enter')createSet()">
               <button class="btn-primary btn-full" onclick="createSet()">Create Set</button>
             </div>
 
