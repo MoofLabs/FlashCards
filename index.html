@@ -31,9 +31,11 @@
     .btn-gray:hover { background: #4b5563; }
     .btn-group { display: flex; gap: 12px; margin-top: 12px; }
     .btn-full { width: 100%; }
-    .set-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 12px; }
-    .set-info h3 { color: #1f2937; margin-bottom: 4px; }
+    .set-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 12px; gap: 16px; }
+    .set-info { flex: 1; min-width: 0; }
+    .set-info h3 { color: #1f2937; margin-bottom: 4px; word-wrap: break-word; }
     .set-info p { color: #6b7280; font-size: 0.875rem; }
+    .set-checkbox { margin-right: 12px; width: 20px; height: 20px; cursor: pointer; }
     .flashcard { background: white; border-radius: 12px; padding: 48px; min-height: 300px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; margin-bottom: 24px; }
     .flashcard:active { transform: scale(0.98); }
     .flashcard-text { font-size: 1.5rem; color: #1f2937; word-wrap: break-word; max-width: 100%; }
@@ -65,11 +67,21 @@
       isFlipped: false,
       editingCard: null,
       shuffleMode: false,
-      shuffledIndices: []
+      shuffledIndices: [],
+      selectedSets: new Set()
     };
 
     function save() {
       localStorage.setItem('flashcard-sets', JSON.stringify(state.sets));
+    }
+
+    function getTextSize(text, hasImage) {
+      if (!text && hasImage) return '1.5rem';
+      const length = text ? text.length : 0;
+      if (length < 20) return '2.5rem';
+      if (length < 50) return '2rem';
+      if (length < 100) return '1.75rem';
+      return '1.25rem';
     }
 
     function render() {
@@ -91,7 +103,7 @@
               <div class="btn-group">
                 <input type="file" id="fileInput" accept=".json,.csv" style="display:none" onchange="importFile(event)">
                 <button class="btn-secondary btn-full" onclick="document.getElementById('fileInput').click()">📥 Import</button>
-                <button class="btn-success btn-full" onclick="exportAll()" ${state.sets.length === 0 ? 'disabled' : ''}>📤 Export All</button>
+                <button class="btn-success btn-full" onclick="exportSelected()" ${state.sets.length === 0 ? 'disabled' : ''}>📤 Export Selected</button>
               </div>
             </div>
 
@@ -99,6 +111,9 @@
               <h2>Your Sets (${state.sets.length})</h2>
               ${state.sets.map(set => `
                 <div class="set-item">
+                  <input type="checkbox" class="set-checkbox" 
+                    ${state.selectedSets.has(set.id) ? 'checked' : ''} 
+                    onchange="toggleSetSelection(${set.id})" />
                   <div class="set-info">
                     <h3>${set.name}</h3>
                     <p>${set.cards.length} cards</p>
@@ -189,7 +204,7 @@
             <div class="flashcard" onclick="flip()">
               <div>
                 <div class="flashcard-label">${side.toUpperCase()} (tap to flip)</div>
-                <div class="flashcard-text">${card[side]}</div>
+                <div class="flashcard-text" style="font-size: ${getTextSize(card[side], card[side + 'Image'])}">${card[side] || ''}</div>
                 ${card[side + 'Image'] ? `<img src="${card[side + 'Image']}" style="max-width:100%;max-height:300px;margin-top:20px;border-radius:8px">` : ''}
               </div>
             </div>
@@ -210,6 +225,13 @@
     function createSet() {
       const name = document.getElementById('newSetName').value.trim();
       if (!name) return alert('Please enter a set name');
+      
+      // Check if set name already exists
+      const existing = state.sets.find(s => s.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        return alert('A set with this name already exists. Please choose a different name.');
+      }
+      
       state.sets.push({ id: Date.now(), name, cards: [] });
       save();
       render();
@@ -218,7 +240,17 @@
     function deleteSet(id) {
       if (!confirm('Delete this set?')) return;
       state.sets = state.sets.filter(s => s.id !== id);
+      state.selectedSets.delete(id);
       save();
+      render();
+    }
+
+    function toggleSetSelection(id) {
+      if (state.selectedSets.has(id)) {
+        state.selectedSets.delete(id);
+      } else {
+        state.selectedSets.add(id);
+      }
       render();
     }
 
@@ -291,13 +323,17 @@
     function addCard() {
       const front = document.getElementById('frontText').value.trim();
       const back = document.getElementById('backText').value.trim();
-      if (!front || !back) return alert('Please fill in both sides');
+      
+      // Front must have text OR image
+      if (!front && !tempFrontImage) {
+        return alert('Please add text or an image to the front of the card');
+      }
       
       const set = state.sets.find(s => s.id === state.currentSet);
       set.cards.push({
         id: Date.now(),
-        front,
-        back,
+        front: front || '',
+        back: back || '',
         frontImage: tempFrontImage,
         backImage: tempBackImage
       });
@@ -319,12 +355,16 @@
     function updateCard() {
       const front = document.getElementById('frontText').value.trim();
       const back = document.getElementById('backText').value.trim();
-      if (!front || !back) return alert('Please fill in both sides');
+      
+      // Front must have text OR image
+      if (!front && !tempFrontImage) {
+        return alert('Please add text or an image to the front of the card');
+      }
       
       const set = state.sets.find(s => s.id === state.currentSet);
       const card = set.cards.find(c => c.id === state.editingCard.id);
-      card.front = front;
-      card.back = back;
+      card.front = front || '';
+      card.back = back || '';
       card.frontImage = tempFrontImage;
       card.backImage = tempBackImage;
       
@@ -386,8 +426,14 @@
       render();
     }
 
-    function exportAll() {
-      const json = JSON.stringify(state.sets, null, 2);
+    function exportSelected() {
+      const selectedSetsArray = state.sets.filter(s => state.selectedSets.has(s.id));
+      
+      if (selectedSetsArray.length === 0) {
+        return alert('Please select at least one set to export');
+      }
+      
+      const json = JSON.stringify(selectedSetsArray, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -407,10 +453,51 @@
           const imported = JSON.parse(e.target.result);
           if (!Array.isArray(imported)) throw new Error('Invalid format');
           
-          state.sets = [...state.sets, ...imported];
+          let addedCount = 0;
+          let mergedCount = 0;
+          
+          imported.forEach(importedSet => {
+            // Check if set with same name exists
+            const existingSet = state.sets.find(s => s.name.toLowerCase() === importedSet.name.toLowerCase());
+            
+            if (existingSet) {
+              // Merge cards, avoiding duplicates
+              importedSet.cards.forEach(importedCard => {
+                const isDuplicate = existingSet.cards.some(c => 
+                  c.front === importedCard.front && c.back === importedCard.back
+                );
+                
+                if (!isDuplicate) {
+                  existingSet.cards.push({
+                    ...importedCard,
+                    id: Date.now() + Math.random()
+                  });
+                  addedCount++;
+                }
+              });
+              mergedCount++;
+            } else {
+              // Add as new set
+              state.sets.push({
+                ...importedSet,
+                id: Date.now() + Math.random(),
+                cards: importedSet.cards.map(card => ({
+                  ...card,
+                  id: Date.now() + Math.random()
+                }))
+              });
+              addedCount += importedSet.cards.length;
+            }
+          });
+          
           save();
           render();
-          alert(`Imported ${imported.length} set(s)!`);
+          
+          let message = `Import complete!\n`;
+          if (mergedCount > 0) message += `Merged ${addedCount} new cards into ${mergedCount} existing set(s).\n`;
+          if (imported.length - mergedCount > 0) message += `Added ${imported.length - mergedCount} new set(s).`;
+          
+          alert(message);
         } catch (err) {
           alert('Error importing file: ' + err.message);
         }
