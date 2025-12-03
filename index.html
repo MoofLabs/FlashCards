@@ -93,9 +93,6 @@
     function render() {
       const app = document.getElementById('app');
       
-      // Remove any existing keyboard listeners
-      document.onkeydown = null;
-      
       if (state.view === 'home') {
         app.innerHTML = `
           <div class="container">
@@ -456,6 +453,26 @@
       a.click();
       URL.revokeObjectURL(url);
     }
+
+    // Set up keyboard shortcuts once
+    document.addEventListener('keydown', (e) => {
+      // Only work in study mode
+      if (state.view !== 'study') return;
+      
+      // Ignore if user is typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        flip();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevCard();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextCard();
+      }
+    });
 
     function importFile(event) {
       const file = event.target.files[0];
