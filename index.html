@@ -31,11 +31,12 @@
     .btn-gray:hover { background: #4b5563; }
     .btn-group { display: flex; gap: 12px; margin-top: 12px; }
     .btn-full { width: 100%; }
-    .set-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 12px; gap: 16px; }
+    .set-item { background: #f9fafb; border-radius: 8px; margin-bottom: 12px; padding: 16px; }
+    .set-item-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .set-checkbox { width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; }
     .set-info { flex: 1; min-width: 0; }
     .set-info h3 { color: #1f2937; margin-bottom: 4px; word-wrap: break-word; }
     .set-info p { color: #6b7280; font-size: 0.875rem; }
-    .set-checkbox { margin-right: 12px; width: 20px; height: 20px; cursor: pointer; }
     .flashcard { background: white; border-radius: 12px; padding: 48px; min-height: 300px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; margin-bottom: 24px; }
     .flashcard:active { transform: scale(0.98); }
     .flashcard-text { font-size: 1.5rem; color: #1f2937; word-wrap: break-word; max-width: 100%; }
@@ -111,12 +112,14 @@
               <h2>Your Sets (${state.sets.length})</h2>
               ${state.sets.map(set => `
                 <div class="set-item">
-                  <input type="checkbox" class="set-checkbox" 
-                    ${state.selectedSets.has(set.id) ? 'checked' : ''} 
-                    onchange="toggleSetSelection(${set.id})" />
-                  <div class="set-info">
-                    <h3>${set.name}</h3>
-                    <p>${set.cards.length} cards</p>
+                  <div class="set-item-header">
+                    <input type="checkbox" class="set-checkbox" 
+                      ${state.selectedSets.has(set.id) ? 'checked' : ''} 
+                      onchange="toggleSetSelection(${set.id})" />
+                    <div class="set-info">
+                      <h3>${set.name}</h3>
+                      <p>${set.cards.length} cards</p>
+                    </div>
                   </div>
                   <div class="btn-group">
                     <button class="btn-secondary btn-small" onclick="editSet(${set.id})">Edit</button>
@@ -138,11 +141,11 @@
 
             <div class="card">
               <h2>${state.editingCard ? 'Edit Card' : 'Add New Card'}</h2>
-              <textarea id="frontText" placeholder="Front (question or term)">${state.editingCard ? state.editingCard.front : ''}</textarea>
+              <textarea id="frontText" placeholder="Front (question or term)" inputmode="text">${state.editingCard ? state.editingCard.front : ''}</textarea>
               <input type="file" id="frontImage" accept="image/*" onchange="handleImage('front', event)">
               <div id="frontImagePreview"></div>
               
-              <textarea id="backText" placeholder="Back (answer or definition)">${state.editingCard ? state.editingCard.back : ''}</textarea>
+              <textarea id="backText" placeholder="Back (answer or definition)" inputmode="text">${state.editingCard ? state.editingCard.back : ''}</textarea>
               <input type="file" id="backImage" accept="image/*" onchange="handleImage('back', event)">
               <div id="backImagePreview"></div>
               
