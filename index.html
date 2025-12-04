@@ -37,6 +37,8 @@
     .set-info { flex: 1; min-width: 0; }
     .set-info h3 { color: #1f2937; margin-bottom: 4px; word-wrap: break-word; }
     .set-info p { color: #6b7280; font-size: 0.875rem; }
+    .btn-icon { padding: 8px; background: none; border: none; cursor: pointer; color: #6b7280; }
+    .btn-icon:hover { color: #374151; }
     .flashcard { background: white; border-radius: 12px; padding: 24px; height: 70vh; max-height: 700px; min-height: 400px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.2s; margin-bottom: 24px; overflow: auto; }
     .flashcard:active { transform: scale(0.98); }
     .flashcard-content { max-width: 100%; max-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -122,7 +124,10 @@
                       ${state.selectedSets.has(set.id) ? 'checked' : ''} 
                       onchange="toggleSetSelection(${set.id})" />
                     <div class="set-info">
-                      <h3>${set.name}</h3>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <h3>${set.name}</h3>
+                        <button class="btn-icon" onclick="renameSetPrompt(${set.id})" title="Rename set">✏️</button>
+                      </div>
                       <p>${set.cards.length} cards</p>
                     </div>
                   </div>
@@ -265,6 +270,24 @@
       } else {
         state.selectedSets.add(id);
       }
+      render();
+    }
+
+    function renameSetPrompt(setId) {
+      const set = state.sets.find(s => s.id === setId);
+      const newName = prompt('Enter new name for set:', set.name);
+      
+      if (!newName || !newName.trim()) return;
+      
+      // Check if name already exists (excluding current set)
+      const exists = state.sets.some(s => s.id !== setId && s.name.toLowerCase() === newName.trim().toLowerCase());
+      if (exists) {
+        alert('A set with this name already exists. Please choose a different name.');
+        return;
+      }
+      
+      set.name = newName.trim();
+      save();
       render();
     }
 
