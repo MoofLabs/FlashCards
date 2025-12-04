@@ -16,7 +16,8 @@
     .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     h1 { color: #6b21a8; margin-bottom: 24px; text-align: center; font-size: 2rem; }
     h2 { color: #374151; margin-bottom: 16px; font-size: 1.25rem; }
-    input, textarea { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; margin-bottom: 12px; -webkit-appearance: none; appearance: none; }
+    input[type="text"], input[type="file"], textarea { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; margin-bottom: 12px; -webkit-appearance: none; appearance: none; }
+    input[type="checkbox"] { -webkit-appearance: checkbox; appearance: auto; }
     textarea { min-height: 80px; resize: vertical; font-family: inherit; }
     button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600; }
     .btn-primary { background: #7c3aed; color: white; }
@@ -33,7 +34,7 @@
     .btn-full { width: 100%; }
     .set-item { background: #f9fafb; border-radius: 8px; margin-bottom: 12px; padding: 16px; }
     .set-item-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .set-checkbox { width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; }
+    .set-checkbox { width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; accent-color: #7c3aed; }
     .set-info { flex: 1; min-width: 0; }
     .set-info h3 { color: #1f2937; margin-bottom: 4px; word-wrap: break-word; }
     .set-info p { color: #6b7280; font-size: 0.875rem; }
@@ -76,7 +77,8 @@
       editingCard: null,
       shuffleMode: false,
       shuffledIndices: [],
-      selectedSets: new Set()
+      selectedSets: new Set(),
+      renamingSet: null
     };
 
     function save() {
@@ -121,12 +123,20 @@
                 <div class="set-item">
                   <div class="set-item-header">
                     <input type="checkbox" class="set-checkbox" 
-                      ${state.selectedSets.has(set.id) ? 'checked' : ''} 
-                      onchange="toggleSetSelection(${set.id})" />
+                      onchange="toggleSetSelection(${set.id})"
+                      id="checkbox-${set.id}"
+                      ${state.selectedSets.has(set.id) ? 'checked="checked"' : ''} />
                     <div class="set-info">
                       <div style="display:flex;align-items:center;gap:8px">
-                        <h3>${set.name}</h3>
-                        <button class="btn-icon" onclick="renameSetPrompt(${set.id})" title="Rename set">✏️</button>
+                        ${state.renamingSet === set.id 
+                          ? `<input type="text" id="rename-input-${set.id}" value="${set.name}" 
+                              onblur="saveRename(${set.id})" 
+                              onkeydown="if(event.key==='Enter')saveRename(${set.id}); if(event.key==='Escape')cancelRename()"
+                              style="flex:1;padding:4px 8px;font-size:1.25rem;font-weight:600;border:2px solid #7c3aed;border-radius:4px"
+                              autofocus>`
+                          : `<h3>${set.name}</h3>
+                             <button class="btn-icon" onclick="startRename(${set.id})" title="Rename set">✏️</button>`
+                        }
                       </div>
                       <p>${set.cards.length} cards</p>
                     </div>
@@ -270,25 +280,63 @@
       } else {
         state.selectedSets.add(id);
       }
-      render();
+      
+      const checkbox = document.getElementById(`checkbox-${id}`);
+      if (checkbox) checkbox.checked = state.selectedSets.has(id);
+      
+      const exportBtn = document.querySelector('.btn-success.btn-full');
+      if (exportBtn && exportBtn.textContent.includes('Export')) {
+        exportBtn.disabled = state.selectedSets.size === 0;
+        exportBtn.style.opacity = state.selectedSets.size === 0 ? '0.5' : '1';
+        exportBtn.style.cursor = state.selectedSets.size === 0 ? 'not-allowed' : 'pointer';
+        exportBtn.textContent = `📤 Export Selected (${state.selectedSets.size})`;
+      }
     }
 
-    function renameSetPrompt(setId) {
-      const set = state.sets.find(s => s.id === setId);
-      const newName = prompt('Enter new name for set:', set.name);
+    function startRename(setId) {
+      state.renamingSet = setId;
+      render();
+      // Focus and select the input after render
+      setTimeout(() => {
+        const input = document.getElementById(`rename-input-${setId}`);
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 0);
+    }
+
+    function saveRename(setId) {
+      const input = document.getElementById(`rename-input-${setId}`);
+      if (!input) return;
       
-      if (!newName || !newName.trim()) return;
+      const newName = input.value.trim();
+      if (!newName) {
+        alert('Set name cannot be empty');
+        return;
+      }
       
       // Check if name already exists (excluding current set)
-      const exists = state.sets.some(s => s.id !== setId && s.name.toLowerCase() === newName.trim().toLowerCase());
+      const exists = state.sets.some(s => s.id !== setId && s.name.toLowerCase() === newName.toLowerCase());
       if (exists) {
         alert('A set with this name already exists. Please choose a different name.');
         return;
       }
       
-      set.name = newName.trim();
+      const set = state.sets.find(s => s.id === setId);
+      set.name = newName;
+      state.renamingSet = null;
       save();
       render();
+    }
+
+    function cancelRename() {
+      state.renamingSet = null;
+      render();
+    }
+
+    function renameSetPrompt(setId) {
+      startRename(setId);
     }
 
     function editSet(id) {
