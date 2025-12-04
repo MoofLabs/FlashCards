@@ -215,7 +215,7 @@
             <h1>${set.name}</h1>
             <p style="color:#6b7280;margin-bottom:24px">Card ${state.currentCardIndex + 1} of ${set.cards.length}</p>
 
-            <div class="flashcard" id="flashcard-element">
+            <div class="flashcard" onclick="flip()" id="flashcard-element">
               <div class="flashcard-content">
                 <div class="flashcard-label">${side.toUpperCase()} (tap to flip)</div>
                 <div class="flashcard-text" style="font-size: ${getTextSize(card[side], card[side + 'Image'])}">${card[side] || ''}</div>
