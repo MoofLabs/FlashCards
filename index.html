@@ -100,7 +100,7 @@
             
             <div class="card">
               <h2>Create New Set</h2>
-              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)" onkeydown="if(event.key==='Enter')createSet()">
+              <input type="text" id="newSetName" placeholder="Set name (e.g., Spanish Vocabulary)" onkeydown="if(event.key==='Enter')createSet()" autocomplete="off" inputmode="text">
               <button class="btn-primary btn-full" onclick="createSet()">Create Set</button>
             </div>
 
@@ -146,11 +146,11 @@
 
             <div class="card">
               <h2>${state.editingCard ? 'Edit Card' : 'Add New Card'}</h2>
-              <textarea id="frontText" placeholder="Front (question or term)" inputmode="text">${state.editingCard ? state.editingCard.front : ''}</textarea>
+              <textarea id="frontText" placeholder="Front (question or term)" inputmode="text" autocomplete="off">${state.editingCard ? state.editingCard.front : ''}</textarea>
               <input type="file" id="frontImage" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif" onchange="handleImage('front', event)">
               <div id="frontImagePreview"></div>
               
-              <textarea id="backText" placeholder="Back (answer or definition)" inputmode="text">${state.editingCard ? state.editingCard.back : ''}</textarea>
+              <textarea id="backText" placeholder="Back (answer or definition)" inputmode="text" autocomplete="off">${state.editingCard ? state.editingCard.back : ''}</textarea>
               <input type="file" id="backImage" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif" onchange="handleImage('back', event)">
               <div id="backImagePreview"></div>
               
