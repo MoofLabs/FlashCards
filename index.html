@@ -68,6 +68,15 @@
   <div id="app"></div>
   
   <script>
+    function esc(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function genId() {
+      return crypto.randomUUID();
+    }
+
     const state = {
       view: 'home',
       sets: JSON.parse(localStorage.getItem('flashcard-sets') || '[]'),
@@ -82,7 +91,11 @@
     };
 
     function save() {
-      localStorage.setItem('flashcard-sets', JSON.stringify(state.sets));
+      try {
+        localStorage.setItem('flashcard-sets', JSON.stringify(state.sets));
+      } catch (e) {
+        alert('Storage is full. Try removing some sets or cards with large images.');
+      }
     }
 
     function getTextSize(text, hasImage) {
@@ -100,7 +113,7 @@
       if (state.view === 'home') {
         app.innerHTML = `
           <div class="container">
-            <h1>📚 Flashcard Study</h1>
+            <h1>Flashcard Study</h1>
             
             <div class="card">
               <h2>Create New Set</h2>
@@ -112,8 +125,8 @@
               <h2>Import & Export</h2>
               <div class="btn-group">
                 <input type="file" id="fileInput" accept=".json,.csv" style="display:none" onchange="importFile(event)">
-                <button class="btn-secondary btn-full" onclick="document.getElementById('fileInput').click()">📥 Import</button>
-                <button class="btn-success btn-full" onclick="exportSelected()" ${state.sets.length === 0 || state.selectedSets.size === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>📤 Export Selected (${state.selectedSets.size})</button>
+                <button class="btn-secondary btn-full" onclick="document.getElementById('fileInput').click()">Import</button>
+                <button class="btn-success btn-full" onclick="exportSelected()" ${state.sets.length === 0 || state.selectedSets.size === 0 ? 'disabled style="opacity:0.5;cursor:not-allowed"' : ''}>Export Selected (${state.selectedSets.size})</button>
               </div>
             </div>
 
@@ -122,29 +135,29 @@
               ${state.sets.map(set => `
                 <div class="set-item">
                   <div class="set-item-header">
-                    <input type="checkbox" class="set-checkbox" 
-                      onchange="toggleSetSelection(${set.id})"
+                    <input type="checkbox" class="set-checkbox"
+                      onchange="toggleSetSelection('${set.id}')"
                       id="checkbox-${set.id}"
                       ${state.selectedSets.has(set.id) ? 'checked="checked"' : ''} />
                     <div class="set-info">
                       <div style="display:flex;align-items:center;gap:8px">
-                        ${state.renamingSet === set.id 
-                          ? `<input type="text" id="rename-input-${set.id}" value="${set.name}" 
-                              onblur="saveRename(${set.id})" 
-                              onkeydown="if(event.key==='Enter')saveRename(${set.id}); if(event.key==='Escape')cancelRename()"
+                        ${state.renamingSet === set.id
+                          ? `<input type="text" id="rename-input-${set.id}" value="${esc(set.name)}"
+                              onblur="saveRename('${set.id}')"
+                              onkeydown="if(event.key==='Enter')saveRename('${set.id}'); if(event.key==='Escape')cancelRename()"
                               style="flex:1;padding:4px 8px;font-size:1.25rem;font-weight:600;border:2px solid #7c3aed;border-radius:4px"
                               autofocus>`
-                          : `<h3>${set.name}</h3>
-                             <button class="btn-icon" onclick="startRename(${set.id})" title="Rename set">✏️</button>`
+                          : `<h3>${esc(set.name)}</h3>
+                             <button class="btn-icon" onclick="startRename('${set.id}')" title="Rename set">Rename</button>`
                         }
                       </div>
                       <p>${set.cards.length} cards</p>
                     </div>
                   </div>
                   <div class="btn-group">
-                    <button class="btn-secondary btn-small" onclick="editSet(${set.id})">Edit</button>
-                    <button class="btn-success btn-small" onclick="studySet(${set.id})" ${set.cards.length === 0 ? 'disabled' : ''}>Study</button>
-                    <button class="btn-danger btn-small" onclick="deleteSet(${set.id})">Delete</button>
+                    <button class="btn-secondary btn-small" onclick="editSet('${set.id}')">Edit</button>
+                    <button class="btn-success btn-small" onclick="studySet('${set.id}')" ${set.cards.length === 0 ? 'disabled' : ''}>Study</button>
+                    <button class="btn-danger btn-small" onclick="deleteSet('${set.id}')">Delete</button>
                   </div>
                 </div>
               `).join('') || '<p style="color:#9ca3af">No sets yet. Create one above!</p>'}
@@ -156,16 +169,16 @@
         app.innerHTML = `
           <div class="container">
             <a href="#" class="back-link" onclick="goHome(); return false;">← Back to Sets</a>
-            <h1>${set.name}</h1>
+            <h1>${esc(set.name)}</h1>
             <p style="color:#6b7280;margin-bottom:24px">${set.cards.length} cards</p>
 
             <div class="card">
               <h2>${state.editingCard ? 'Edit Card' : 'Add New Card'}</h2>
-              <textarea id="frontText" placeholder="Front (question or term)" autocomplete="off">${state.editingCard ? state.editingCard.front : ''}</textarea>
+              <textarea id="frontText" placeholder="Front (question or term)" autocomplete="off">${state.editingCard ? esc(state.editingCard.front) : ''}</textarea>
               <input type="file" id="frontImage" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif" onchange="handleImage('front', event)">
               <div id="frontImagePreview"></div>
               
-              <textarea id="backText" placeholder="Back (answer or definition)" autocomplete="off">${state.editingCard ? state.editingCard.back : ''}</textarea>
+              <textarea id="backText" placeholder="Back (answer or definition)" autocomplete="off">${state.editingCard ? esc(state.editingCard.back) : ''}</textarea>
               <input type="file" id="backImage" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif" onchange="handleImage('back', event)">
               <div id="backImagePreview"></div>
               
@@ -179,8 +192,8 @@
             </div>
 
             <div style="margin-bottom:16px">
-              <button class="btn-success btn-full" onclick="studySet(${state.currentSet})" ${set.cards.length === 0 ? 'disabled' : ''}>
-                📖 Study Now
+              <button class="btn-success btn-full" onclick="studySet('${state.currentSet}')" ${set.cards.length === 0 ? 'disabled' : ''}>
+                Study Now
               </button>
             </div>
 
@@ -189,14 +202,14 @@
               ${set.cards.map((card, i) => `
                 <div class="card-list-item">
                   <div class="card-content">
-                    <strong>${i + 1}. ${card.front}</strong>
+                    <strong>${i + 1}. ${esc(card.front)}</strong>
                     ${card.frontImage ? `<br><img src="${card.frontImage}" class="image-preview">` : ''}
-                    <div style="color:#6b7280;margin-top:8px">${card.back}</div>
+                    <div style="color:#6b7280;margin-top:8px">${esc(card.back)}</div>
                     ${card.backImage ? `<br><img src="${card.backImage}" class="image-preview">` : ''}
                   </div>
                   <div class="card-actions">
-                    <button class="btn-secondary btn-small" onclick="startEdit(${card.id})">Edit</button>
-                    <button class="btn-danger btn-small" onclick="deleteCard(${card.id})">Delete</button>
+                    <button class="btn-secondary btn-small" onclick="startEdit('${card.id}')">Edit</button>
+                    <button class="btn-danger btn-small" onclick="deleteCard('${card.id}')">Delete</button>
                   </div>
                 </div>
               `).join('') || '<p style="color:#9ca3af">No cards yet. Add one above!</p>'}
@@ -223,17 +236,17 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
               <a href="#" class="back-link" onclick="goHome(); return false;">← Back to Sets</a>
               <button class="shuffle-btn btn-small ${state.shuffleMode ? 'active' : ''}" onclick="toggleShuffle()">
-                🔀 ${state.shuffleMode ? 'Shuffled' : 'Shuffle'}
+                ${state.shuffleMode ? 'Shuffled' : 'Shuffle'}
               </button>
             </div>
             
-            <h1>${set.name}</h1>
+            <h1>${esc(set.name)}</h1>
             <p style="color:#6b7280;margin-bottom:24px">Card ${state.currentCardIndex + 1} of ${set.cards.length}</p>
 
             <div class="flashcard" onclick="flip()" id="flashcard-element">
               <div class="flashcard-content">
                 <div class="flashcard-label">${side.toUpperCase()} (tap to flip)</div>
-                <div class="flashcard-text" style="font-size: ${getTextSize(card[side], card[side + 'Image'])}">${card[side] || ''}</div>
+                <div class="flashcard-text" style="font-size: ${getTextSize(card[side], card[side + 'Image'])}">${esc(card[side])}</div>
                 ${card[side + 'Image'] ? `<img src="${card[side + 'Image']}">` : ''}
               </div>
             </div>
@@ -261,7 +274,7 @@
         return alert('A set with this name already exists. Please choose a different name.');
       }
       
-      state.sets.push({ id: Date.now(), name, cards: [] });
+      state.sets.push({ id: genId(), name, cards: [] });
       save();
       render();
     }
@@ -289,7 +302,7 @@
         exportBtn.disabled = state.selectedSets.size === 0;
         exportBtn.style.opacity = state.selectedSets.size === 0 ? '0.5' : '1';
         exportBtn.style.cursor = state.selectedSets.size === 0 ? 'not-allowed' : 'pointer';
-        exportBtn.textContent = `📤 Export Selected (${state.selectedSets.size})`;
+        exportBtn.textContent = `Export Selected (${state.selectedSets.size})`;
       }
     }
 
@@ -416,7 +429,7 @@
       
       const set = state.sets.find(s => s.id === state.currentSet);
       set.cards.push({
-        id: Date.now(),
+        id: genId(),
         front: front || '',
         back: back || '',
         frontImage: tempFrontImage,
@@ -548,63 +561,108 @@
     function importFile(event) {
       const file = event.target.files[0];
       if (!file) return;
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const imported = JSON.parse(e.target.result);
-          if (!Array.isArray(imported)) throw new Error('Invalid format');
-          
-          let addedCount = 0;
-          let mergedCount = 0;
-          
-          imported.forEach(importedSet => {
-            // Check if set with same name exists
-            const existingSet = state.sets.find(s => s.name.toLowerCase() === importedSet.name.toLowerCase());
-            
-            if (existingSet) {
-              // Merge cards, avoiding duplicates
-              importedSet.cards.forEach(importedCard => {
-                const isDuplicate = existingSet.cards.some(c => 
-                  c.front === importedCard.front && c.back === importedCard.back
-                );
-                
-                if (!isDuplicate) {
-                  existingSet.cards.push({
-                    ...importedCard,
-                    id: Date.now() + Math.random()
-                  });
-                  addedCount++;
-                }
-              });
-              mergedCount++;
-            } else {
-              // Add as new set
-              state.sets.push({
-                ...importedSet,
-                id: Date.now() + Math.random(),
-                cards: importedSet.cards.map(card => ({
-                  ...card,
-                  id: Date.now() + Math.random()
-                }))
-              });
-              addedCount += importedSet.cards.length;
-            }
-          });
-          
-          save();
-          render();
-          
-          let message = `Import complete!\n`;
-          if (mergedCount > 0) message += `Merged ${addedCount} new cards into ${mergedCount} existing set(s).\n`;
-          if (imported.length - mergedCount > 0) message += `Added ${imported.length - mergedCount} new set(s).`;
-          
-          alert(message);
+          if (file.name.endsWith('.csv')) {
+            importCSV(e.target.result);
+          } else {
+            importJSON(e.target.result);
+          }
         } catch (err) {
           alert('Error importing file: ' + err.message);
         }
       };
       reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function importCSV(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      if (lines.length === 0) throw new Error('CSV file is empty');
+
+      let start = 0;
+      const first = lines[0].toLowerCase();
+      if (first === 'front,back' || first === '"front","back"') start = 1;
+
+      const cards = [];
+      for (let i = start; i < lines.length; i++) {
+        const parts = parseCSVLine(lines[i]);
+        if (parts.length >= 2) {
+          cards.push({ id: genId(), front: parts[0], back: parts[1], frontImage: null, backImage: null });
+        }
+      }
+
+      if (cards.length === 0) throw new Error('No valid rows found. Expected: front,back');
+
+      const name = prompt('Name for this imported set:', 'Imported CSV') || 'Imported CSV';
+      state.sets.push({ id: genId(), name, cards });
+      save();
+      render();
+      alert(`Imported ${cards.length} cards into "${name}".`);
+    }
+
+    function parseCSVLine(line) {
+      const parts = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+          else if (ch === '"') { inQuotes = false; }
+          else { current += ch; }
+        } else {
+          if (ch === '"') { inQuotes = true; }
+          else if (ch === ',') { parts.push(current.trim()); current = ''; }
+          else { current += ch; }
+        }
+      }
+      parts.push(current.trim());
+      return parts;
+    }
+
+    function importJSON(text) {
+      const imported = JSON.parse(text);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+
+      let addedCount = 0;
+      let mergedCount = 0;
+
+      imported.forEach(importedSet => {
+        const existingSet = state.sets.find(s => s.name.toLowerCase() === importedSet.name.toLowerCase());
+
+        if (existingSet) {
+          importedSet.cards.forEach(importedCard => {
+            const isDuplicate = existingSet.cards.some(c =>
+              c.front === importedCard.front && c.back === importedCard.back
+            );
+
+            if (!isDuplicate) {
+              existingSet.cards.push({ ...importedCard, id: genId() });
+              addedCount++;
+            }
+          });
+          mergedCount++;
+        } else {
+          state.sets.push({
+            ...importedSet,
+            id: genId(),
+            cards: importedSet.cards.map(card => ({ ...card, id: genId() }))
+          });
+          addedCount += importedSet.cards.length;
+        }
+      });
+
+      save();
+      render();
+
+      let message = `Import complete!\n`;
+      if (mergedCount > 0) message += `Merged ${addedCount} new cards into ${mergedCount} existing set(s).\n`;
+      if (imported.length - mergedCount > 0) message += `Added ${imported.length - mergedCount} new set(s).`;
+
+      alert(message);
     }
 
     render();
